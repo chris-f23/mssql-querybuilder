@@ -1,7 +1,33 @@
 export class ClauseAlreadySetError extends Error {}
+class FromClause<Columns> {
+  public toString() {
+    return "";
+  }
+}
+
+export class FromClauseBuilder<MainTableColumns> {
+  constructor() {}
+
+  public join<Columns>(table: {
+    database: string;
+    schema: string;
+    table: string;
+    as: string;
+  }) {
+    return new FromClause<MainTableColumns>();
+  }
+
+  public build() {
+    return "";
+  }
+}
 
 export class QueryBuilder {
-  private clauses = {
+  private clauses: {
+    select: string;
+    from: string;
+    where: string;
+  } = {
     select: "",
     from: "",
     where: "",
@@ -13,17 +39,27 @@ export class QueryBuilder {
     if (this.clauses.select.length > 0) {
       throw new ClauseAlreadySetError("'SELECT' already set");
     }
+
     this.clauses.select = "SELECT " + columns.map((c) => `[${c}]`).join(", ");
     return this;
   }
 
-  public from(database: string, schema: string, table: string, alias: string) {
+  public from<Columns>(mainTable: {
+    database: string;
+    schema: string;
+    table: string;
+    as: string;
+  }) {
     if (this.clauses.from.length > 0) {
       throw new ClauseAlreadySetError("'FROM' already set");
     }
-    const fullyQualifiedName = `[${database}].[${schema}].[${table}] AS ${alias}`;
-    this.clauses.from = `FROM ${fullyQualifiedName}`;
-    return this;
+
+    if (mainTable.schema === undefined) {
+      mainTable.schema = "dbo";
+    }
+
+    this.clauses.from = `FROM [${mainTable.database}].[${mainTable.schema}].[${mainTable.table}] AS ${mainTable.as}`;
+    return new FromClauseBuilder<Columns>(this.clauses.from);
   }
 
   public where(field: string, operator: string, value: string) {
