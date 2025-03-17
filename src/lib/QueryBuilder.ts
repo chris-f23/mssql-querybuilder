@@ -1,3 +1,8 @@
+import { table } from "console";
+
+type JoinType = "FULL";
+type Condition = "=" | "<>" | ">" | "<" | ">=" | "<=";
+
 export class ClauseAlreadySetError extends Error {}
 class FromClause<Columns> {
   public toString() {
@@ -5,24 +10,73 @@ class FromClause<Columns> {
   }
 }
 
-export class FromClauseBuilder<MainTableColumns> {
-  constructor() {}
+type ColumnDefinition = {};
 
-  public join<Columns>(table: {
-    database: string;
-    schema: string;
-    table: string;
-    as: string;
-  }) {
-    return new FromClause<MainTableColumns>();
+// type Columns = Record<string, string>;
+export class TableDefinition<T extends ColumnDefinition> {
+  database: string;
+  schema: string;
+  table: string;
+  #columns: T;
+
+  constructor(props: { database: string; schema?: string; table: string }) {
+    this.database = props.database;
+    this.schema = props.schema ?? "dbo";
+    this.table = props.table;
   }
 
-  public build() {
-    return "";
+  colRef(column: keyof T) {
+    return String(column);
+  }
+
+  fullName(alias: string) {
+    return `[${this.database}].[${this.schema}].[${this.table}] AS [${alias}]`;
   }
 }
 
-export class QueryBuilder {
+// export class FromClauseBuilder<MainTableColumns> {
+//   constructor() {}
+
+//   public join<Columns>(table: {
+//     database: string;
+//     schema: string;
+//     table: string;
+//     as: string;
+//   }) {
+//     return new FromClause<MainTableColumns>();
+//   }
+
+//   public build() {
+//     return "";
+//   }
+// }
+
+// type TableDefinitionMap<
+//   TableColumns extends string[],
+//   TableAliases extends string,
+//   TableDefinitions extends TableDefinition<TableColumns>
+// > = {
+//   [key in TableAliases]: TableDefinitions;
+// };
+
+type ITableDefinitionMap = Record<string, TableDefinition<ColumnDefinition>>;
+
+export class ConditionBuilder<TableDefinitionMap extends ITableDefinitionMap> {
+  constructor(public tableDefinitions: TableDefinitionMap) {}
+
+  // public on(
+  //   columnSelector: (
+  //     tableDefinitions: TableDefinitionMap
+  //   ) => TableDefinitionMap["#columns"],
+  //   condition: Condition,
+  //   value: string
+  // ) {}
+
+  public and() {}
+  public or() {}
+}
+
+export class QueryBuilder<TableDefinitionMap extends ITableDefinitionMap> {
   private clauses: {
     select: string;
     from: string;
@@ -33,33 +87,49 @@ export class QueryBuilder {
     where: "",
   };
 
-  public constructor() {}
+  tableDefinitions: TableDefinitionMap;
 
-  public select(columns: string[]) {
+  public constructor(tableDefinitions: TableDefinitionMap) {
+    this.tableDefinitions = tableDefinitions;
+  }
+
+  public select(
+    columnsSelector: (
+      tableDefinitions: TableDefinitionMap
+    ) => Record<string, string>
+  ) {
     if (this.clauses.select.length > 0) {
       throw new ClauseAlreadySetError("'SELECT' already set");
     }
 
-    this.clauses.select = "SELECT " + columns.map((c) => `[${c}]`).join(", ");
+    const columns = columnsSelector(this.tableDefinitions);
+
+    this.clauses.select =
+      "SELECT " +
+      Object.entries(columns)
+        .map(([k, v]) => `${v} AS [${k}]`)
+        .join(", ");
     return this;
   }
 
-  public from<Columns>(mainTable: {
-    database: string;
-    schema: string;
-    table: string;
-    as: string;
-  }) {
-    if (this.clauses.from.length > 0) {
-      throw new ClauseAlreadySetError("'FROM' already set");
-    }
+  public from(tableAlias: keyof typeof this.tableDefinitions) {
+    const table = this.tableDefinitions[tableAlias];
 
-    if (mainTable.schema === undefined) {
-      mainTable.schema = "dbo";
-    }
+    this.clauses.from = `FROM ${table.fullName(String(tableAlias))}`;
+    return this;
+  }
 
-    this.clauses.from = `FROM [${mainTable.database}].[${mainTable.schema}].[${mainTable.table}] AS ${mainTable.as}`;
-    return new FromClauseBuilder<Columns>(this.clauses.from);
+  public join(
+    tableAlias: keyof typeof this.tableDefinitions,
+    joinType: JoinType,
+    on: (
+      conditionBuilder: ConditionBuilder<typeof this.tableDefinitions>
+    ) => ConditionBuilder<typeof this.tableDefinitions>
+  ) {
+    // const join = on(this.tableDefinitions);
+
+    // this.clauses.from = `FROM ${leftTable.fullName(
+    return this;
   }
 
   public where(field: string, operator: string, value: string) {
@@ -71,6 +141,8 @@ export class QueryBuilder {
   }
 
   public build() {
-    return `${this.clauses.select} ${this.clauses.from} ${this.clauses.where}`;
+    return [this.clauses.select, this.clauses.from, this.clauses.where].join(
+      " "
+    );
   }
 }
