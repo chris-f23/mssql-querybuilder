@@ -1,10 +1,7 @@
-import {
-  QueryBuilderError,
-  Fn,
-  QueryBuilder,
-  Ref,
-  TableDefinition,
-} from "./QueryBuilder";
+import { Fn } from "./Fn";
+import { QueryBuilderError, QueryBuilder } from "./QueryBuilder";
+import { Ref } from "./Ref";
+import { TableDefinition } from "./TableDefinition";
 
 describe("QueryBuilder", () => {
   it(`Should build "SELECT 1"`, () => {
