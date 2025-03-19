@@ -1,9 +1,10 @@
+import { ColumnSelector } from "./ColumnsSelector";
 import { Comparison } from "./Comparison";
 import { Logical } from "./Logical";
 import { Ref } from "./Ref";
 import { ITableDefinitionMap } from "./types";
 
-export class QueryBuilderError extends Error {}
+export class QueryBuilderError extends Error { }
 
 export class QueryBuilder<TableDefinitionMap extends ITableDefinitionMap> {
   private parts: {
@@ -16,7 +17,13 @@ export class QueryBuilder<TableDefinitionMap extends ITableDefinitionMap> {
     where: Logical | Comparison | null;
   };
 
+  public columnsSelector: ColumnSelector<
+    QueryBuilder<TableDefinitionMap>["tableDefinitions"]
+  >;
+
   public constructor(private tableDefinitions: TableDefinitionMap = undefined) {
+    this.columnsSelector = new ColumnSelector(this.tableDefinitions);
+
     this.parts = {
       select: null,
       from: null,
@@ -25,20 +32,8 @@ export class QueryBuilder<TableDefinitionMap extends ITableDefinitionMap> {
     };
   }
 
-  public select(
-    columnsSelector: (tableDefinitions: TableDefinitionMap) => Ref[]
-  ) {
-    if (this.parts.select !== null) {
-      throw new QueryBuilderError("'SELECT' already set");
-    }
-
-    const columns = columnsSelector(this.tableDefinitions);
-
-    if (columns.length === 0) {
-      throw new QueryBuilderError("No columns selected");
-    }
-
-    this.parts.select = columns;
+  public select(fn: (tableDefinitions: TableDefinitionMap) => Ref[]) {
+    this.columnsSelector.select(fn);
     return this;
   }
 
@@ -76,11 +71,8 @@ export class QueryBuilder<TableDefinitionMap extends ITableDefinitionMap> {
   // }
 
   public buildParts(separator: string) {
-    if (this.parts.select === null) {
-      throw new QueryBuilderError("'SELECT' is required");
-    }
 
-    const columnsSelected = this.parts.select.map((r) => r.build().trim());
+    const columnsSelected = this.columnsSelector.build() //this.parts.select.map((r) => r.build().trim());
 
     let fromTable: string;
     if (this.parts.from) {
