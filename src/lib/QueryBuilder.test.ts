@@ -1,50 +1,125 @@
 import {
-  ClauseAlreadySetError,
+  QueryBuilderError,
+  Fn,
   QueryBuilder,
+  Ref,
   TableDefinition,
 } from "./QueryBuilder";
 
-const personTable = new TableDefinition<{
-  id: number;
-  name: string;
-  email: string;
-  status_id: number;
-}>({
-  database: "MainDB",
-  table: "Person",
-});
-
-const personStatusTable = new TableDefinition<{
-  id: number;
-  text: string;
-}>({
-  database: "MainDB",
-  table: "PersonStatus",
-});
-
 describe("QueryBuilder", () => {
-  it("Should build a query correctly", () => {
+  it(`Should build "SELECT 1"`, () => {
+    const query = new QueryBuilder()
+      .select(() => {
+        return [Ref.number(1)];
+      })
+      .build();
+
+    expect(query).toEqual("SELECT 1");
+  });
+
+  it(`Should build "SELECT 'Hello World'"`, () => {
+    const query = new QueryBuilder()
+      .select(() => {
+        return [Ref.string("Hello World")];
+      })
+      .build();
+
+    expect(query).toEqual("SELECT 'Hello World'");
+  });
+
+  it(`Should build "SELECT 'Hello World' AS [message]"`, () => {
+    const query = new QueryBuilder()
+      .select(() => {
+        return [Ref.string("Hello World").as("message")];
+      })
+      .build();
+
+    expect(query).toEqual("SELECT 'Hello World' AS [message]");
+  });
+
+  it(`Should build "SELECT [p].[name] + ' ' + [p].[last_name] AS [full_name]"`, () => {
+    const personTable = new TableDefinition<{
+      name: string;
+      last_name: string;
+    }>({
+      database: "MainDB",
+      table: "Person",
+      alias: "p",
+    });
+
+    const query = new QueryBuilder({
+      person: personTable,
+    })
+      .select(({ person }) => {
+        return [
+          Fn.CONCAT(
+            person.get("name"),
+            Ref.string(" "),
+            person.get("last_name")
+          ).as("full_name"),
+        ];
+      })
+      .build();
+
+    expect(query).toEqual(
+      "SELECT [p].[name] + ' ' + [p].[last_name] AS [full_name]"
+    );
+  });
+
+  it("Should build a valid complex query", () => {
+    const personTable = new TableDefinition<{
+      name: string;
+      last_name: string;
+      status_id: string;
+    }>({
+      database: "MainDB",
+      table: "Person",
+      alias: "p",
+    });
+
+    const personStatusTable = new TableDefinition<{
+      id: string;
+      text: string;
+      is_deleted: boolean;
+    }>({
+      database: "MainDB",
+      table: "PersonStatus",
+      alias: "ps",
+    });
+
     const query = new QueryBuilder({
       person: personTable,
       status: personStatusTable,
     })
-      .select((tables) => {
-        return {
-          personName: tables.person.colRef("name"),
-          statusText: tables.status.colRef("text"),
-        };
+      .select(({ person, status }) => {
+        return [
+          Fn.UPPER(
+            Fn.CONCAT(person.get("name"), Fn.SPACE(), person.get("last_name"))
+          ).as("full_name"),
+          status.get("text").as("status"),
+        ];
       })
       .from("person")
-      // .join("person", "FULL", "status", (cb) => {
-      //   return (
-      //     tables.person.colRef("status_id") === tables.status.colRef("id") &&
-      //     tables.status.colRef("id") === 1
-      //   );
-      //   return true;
-      // })
-      .build();
+      .join("status", ({ person, status }) => {
+        return person
+          .get("status_id")
+          .isEqualTo(status.get("id"))
+          .and(status.get("is_deleted").isFalse())
+          .or(status.get("text").isNotNull());
+      });
 
-    expect(query).toEqual("");
+    const { columnsSelected, fromTable, joinTables, whereCondition } =
+      query.buildParts("\n");
+
+    expect(columnsSelected).toStrictEqual([
+      `UPPER([p].[name] + ' ' + [p].[last_name]) AS [full_name]`,
+      `[ps].[text] AS [status]`,
+    ]);
+
+    expect(fromTable).toStrictEqual("FROM [MainDB].[dbo].[Person] AS [p]");
+    expect(joinTables).toStrictEqual([
+      `JOIN [MainDB].[dbo].[PersonStatus] AS [ps]\nON [p].[status_id] = [ps].[id] AND [ps].[is_deleted] = BIT(0) OR [ps].[text] IS NOT NULL`,
+    ]);
   });
   // it("Should build a query correctly", () => {
   //   const query = new QueryBuilder()
