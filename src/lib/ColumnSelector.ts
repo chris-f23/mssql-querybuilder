@@ -1,13 +1,12 @@
 import { Ref } from "./Ref";
 import { ITableDefinitionMap } from "./types";
 
-export class ColumnSelectorError extends Error { }
+export class ColumnSelectorError extends Error {}
 
 export class ColumnSelector<TableDefinitionMap extends ITableDefinitionMap> {
-  private selectFn?: ((tableDefinitions: TableDefinitionMap) => Ref[]);
+  private selectFn?: (tableDefinitions: TableDefinitionMap) => Ref[];
 
-  constructor(private tableDefinitions?: TableDefinitionMap) {
-  }
+  constructor(private tableDefinitions?: TableDefinitionMap) {}
 
   public select(selectFn: (tableDefinitions?: TableDefinitionMap) => Ref[]) {
     this.selectFn = selectFn;

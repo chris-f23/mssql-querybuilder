@@ -1,10 +1,10 @@
-import { ColumnSelector } from "./ColumnsSelector";
+import { ColumnSelector } from "./ColumnSelector";
 import { Comparison } from "./Comparison";
 import { Logical } from "./Logical";
 import { Ref } from "./Ref";
 import { ITableDefinitionMap } from "./types";
 
-export class QueryBuilderError extends Error { }
+export class QueryBuilderError extends Error {}
 
 export class QueryBuilder<TableDefinitionMap extends ITableDefinitionMap> {
   private parts: {
@@ -71,8 +71,7 @@ export class QueryBuilder<TableDefinitionMap extends ITableDefinitionMap> {
   // }
 
   public buildParts(separator: string) {
-
-    const columnsSelected = this.columnsSelector.build() //this.parts.select.map((r) => r.build().trim());
+    const columnsSelected = this.columnsSelector.build(); //this.parts.select.map((r) => r.build().trim());
 
     let fromTable: string;
     if (this.parts.from) {
