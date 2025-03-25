@@ -2,7 +2,7 @@ import { Comparison } from "./Comparison";
 import { Comparator } from "./types";
 
 export class Ref {
-  public constructor(private original: string) {}
+  private constructor(private original: string) {}
 
   public build(): string {
     return this.original;
@@ -16,6 +16,11 @@ export class Ref {
     return new Ref(`${this.original} AS [${alias}]`);
   }
 
+  public static _raw = (raw: string) => new Ref(raw);
+
+  public append = (otherRef: Ref) =>
+    new Ref(`${this.original} + ${otherRef.build()}`);
+
   public isEqualTo = (otherRef: Ref): Comparison => this.compare("=", otherRef);
   public isLessThan = (otherRef: Ref): Comparison =>
     this.compare("<", otherRef);
@@ -28,24 +33,29 @@ export class Ref {
   public isNotEqualTo = (otherRef: Ref): Comparison =>
     this.compare("<>", otherRef);
 
-  public isFalse = (): Comparison => this.compare("=", Ref.CONSTANTS.FALSE);
-  public isTrue = (): Comparison => this.compare("=", Ref.CONSTANTS.TRUE);
+  public isFalse = (): Comparison => this.compare("=", Ref.FALSE());
+  public isTrue = (): Comparison => this.compare("=", Ref.TRUE());
+  public isNull = (): Comparison => this.compare("IS", Ref.NULL());
+  public isNotNull = (): Comparison => this.compare("IS NOT", Ref.NULL());
 
-  public isNull = (): Comparison => this.compare("IS", Ref.CONSTANTS.NULL);
-  public isNotNull = (): Comparison =>
-    this.compare("IS NOT", Ref.CONSTANTS.NULL);
+  public toUpper = () => new Ref(`UPPER(${this.original})`);
+  public toLower = () => new Ref(`LOWER(${this.original})`);
 
-  public static number(n: number) {
-    return new Ref(`${n}`);
-  }
+  // public static UPPER = (ref: Ref) => new Ref(`UPPER(${ref.build()})`);
+  // public static LOWER = (ref: Ref) => new Ref(`LOWER(${ref.build()})`);
 
-  public static string(s: string) {
-    return new Ref(`'${s}'`);
-  }
+  // public static CONCAT(...values: Ref[]): Ref {
+  //   return new Ref(values.map((v) => v.build()).join(" + "));
+  // }
 
-  private static CONSTANTS = {
-    NULL: new Ref("NULL"),
-    FALSE: new Ref("BIT(0)"),
-    TRUE: new Ref("BIT(1)"),
-  };
+  public static NUMBER = (value: number) => new Ref(`${value}`);
+
+  public static STRING = (value: string) => new Ref(`'${value}'`);
+
+  public static BOOLEAN = (value: boolean) =>
+    new Ref(`BIT(${value ? "1" : "0"})`);
+
+  public static NULL = () => new Ref("NULL");
+  public static FALSE = () => new Ref(`BIT(0)`);
+  public static TRUE = () => new Ref(`BIT(1)`);
 }

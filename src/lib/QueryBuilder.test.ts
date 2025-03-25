@@ -7,7 +7,7 @@ describe("QueryBuilder", () => {
   it(`Should build "SELECT 1"`, () => {
     const query = new QueryBuilder()
       .select(() => {
-        return [Ref.number(1)];
+        return [Ref.NUMBER(1)];
       })
       .build();
 
@@ -17,7 +17,7 @@ describe("QueryBuilder", () => {
   it(`Should build "SELECT 'Hello World'"`, () => {
     const query = new QueryBuilder()
       .select(() => {
-        return [Ref.string("Hello World")];
+        return [Ref.STRING("Hello World")];
       })
       .build();
 
@@ -27,7 +27,7 @@ describe("QueryBuilder", () => {
   it(`Should build "SELECT 'Hello World' AS [message]"`, () => {
     const query = new QueryBuilder()
       .select(() => {
-        return [Ref.string("Hello World").as("message")];
+        return [Ref.STRING("Hello World").as("message")];
       })
       .build();
 
@@ -49,11 +49,11 @@ describe("QueryBuilder", () => {
     })
       .select(({ person }) => {
         return [
-          Fn.CONCAT(
-            person.get("name"),
-            Ref.string(" "),
-            person.get("last_name")
-          ).as("full_name"),
+          person
+            .get("name")
+            .append(Ref.STRING(" "))
+            .append(person.get("last_name"))
+            .as("full_name"),
         ];
       })
       .build();
@@ -90,9 +90,12 @@ describe("QueryBuilder", () => {
     })
       .select(({ person, status }) => {
         return [
-          Fn.UPPER(
-            Fn.CONCAT(person.get("name"), Fn.SPACE(), person.get("last_name"))
-          ).as("full_name"),
+          person
+            .get("name")
+            .append(Ref.STRING(" "))
+            .append(person.get("last_name"))
+            .toUpper()
+            .as("full_name"),
           status.get("text").as("status"),
         ];
       })

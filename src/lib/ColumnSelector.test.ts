@@ -1,12 +1,11 @@
 import { ColumnSelector } from "./ColumnSelector";
-import { Fn } from "./Fn";
 import { Ref } from "./Ref";
 
 describe("QueryBuilder", () => {
   it(`Should select "1"`, () => {
     const columnsSelected = new ColumnSelector()
       .select(() => {
-        return [Ref.number(1)];
+        return [Ref.NUMBER(1)];
       })
       .build();
 
@@ -16,7 +15,7 @@ describe("QueryBuilder", () => {
   it(`Should select "1 AS [number]"`, () => {
     const columnsSelected = new ColumnSelector()
       .select(() => {
-        return [Ref.number(1).as("number")];
+        return [Ref.NUMBER(1).as("number")];
       })
       .build();
 
@@ -27,8 +26,8 @@ describe("QueryBuilder", () => {
     const columnsSelected = new ColumnSelector()
       .select(() => {
         return [
-          Fn.UPPER(Ref.string("hello world")).as("upper_message"),
-          Ref.string("me").as("author"),
+          Ref.STRING("hello world").toUpper().as("upper_message"),
+          Ref.STRING("me").as("author"),
         ];
       })
       .build();

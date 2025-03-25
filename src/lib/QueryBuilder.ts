@@ -17,12 +17,12 @@ export class QueryBuilder<TableDefinitionMap extends ITableDefinitionMap> {
     where: Logical | Comparison | null;
   };
 
-  public columnsSelector: ColumnSelector<
+  public columnSelector: ColumnSelector<
     QueryBuilder<TableDefinitionMap>["tableDefinitions"]
   >;
 
   public constructor(private tableDefinitions: TableDefinitionMap = undefined) {
-    this.columnsSelector = new ColumnSelector(this.tableDefinitions);
+    this.columnSelector = new ColumnSelector(this.tableDefinitions);
 
     this.parts = {
       select: null,
@@ -33,7 +33,7 @@ export class QueryBuilder<TableDefinitionMap extends ITableDefinitionMap> {
   }
 
   public select(fn: (tableDefinitions: TableDefinitionMap) => Ref[]) {
-    this.columnsSelector.select(fn);
+    this.columnSelector.select(fn);
     return this;
   }
 
@@ -71,7 +71,7 @@ export class QueryBuilder<TableDefinitionMap extends ITableDefinitionMap> {
   // }
 
   public buildParts(separator: string) {
-    const columnsSelected = this.columnsSelector.build(); //this.parts.select.map((r) => r.build().trim());
+    const columnsSelected = this.columnSelector.build(); //this.parts.select.map((r) => r.build().trim());
 
     let fromTable: string;
     if (this.parts.from) {

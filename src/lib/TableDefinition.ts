@@ -19,8 +19,8 @@ export class TableDefinition<T extends ColumnDefinition> {
     this.alias = props.alias;
   }
 
-  get(column: keyof T): Ref {
-    return new Ref(`[${this.alias}].[${String(column)}]`);
+  get(column: string & keyof T): Ref {
+    return Ref._raw(`[${this.alias}].[${column}]`);
   }
 
   fullName() {
