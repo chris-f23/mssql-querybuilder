@@ -27,8 +27,4 @@ describe("Comparison", () => {
   it(`Should build "1 = BIT(1)"`, () => {
     expect(Ref.NUMBER(1).isTrue().build()).toStrictEqual("1 = BIT(1)");
   });
-
-  it(`Should build "1 = BIT(1)"`, () => {
-    expect(Ref.NUMBER(1).isTrue().build()).toStrictEqual("1 = BIT(1)");
-  });
 });

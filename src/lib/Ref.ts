@@ -1,7 +1,19 @@
 import { Comparison } from "./Comparison";
 import { Comparator } from "./types";
 
-export class Ref {
+export interface IRef {
+  build(): string;
+}
+
+class AliasRef implements IRef {
+  public constructor(private original: string) {}
+
+  public build(): string {
+    return this.original;
+  }
+}
+
+export class Ref implements IRef {
   private constructor(private original: string) {}
 
   public build(): string {
@@ -12,14 +24,22 @@ export class Ref {
     return new Comparison(this, comparator, otherRef);
   }
 
-  public as(alias: string): Ref {
-    return new Ref(`${this.original} AS [${alias}]`);
+  public as(alias: string): AliasRef {
+    return new AliasRef(`${this.original} AS [${alias}]`);
   }
 
   public static _raw = (raw: string) => new Ref(raw);
 
-  public append = (otherRef: Ref) =>
-    new Ref(`${this.original} + ${otherRef.build()}`);
+  public append(otherRefOrString: Ref | string) {
+    if (otherRefOrString instanceof Ref) {
+      return new Ref(`${this.original} + ${otherRefOrString.build()}`);
+    }
+    return new Ref(`${this.original} + '${otherRefOrString}'`);
+  }
+
+  // public wrap(value: string) {
+  //   return new Ref(`'${value}' + ${this.original} + '${value}'`);
+  // }
 
   public isEqualTo = (otherRef: Ref): Comparison => this.compare("=", otherRef);
   public isLessThan = (otherRef: Ref): Comparison =>
@@ -40,6 +60,17 @@ export class Ref {
 
   public toUpper = () => new Ref(`UPPER(${this.original})`);
   public toLower = () => new Ref(`LOWER(${this.original})`);
+
+  // public isLike = (otherRef: Ref) => this.compare("LIKE", otherRef);
+
+  public startsWith = (otherRef: Ref) =>
+    this.compare("LIKE", Ref._raw(`'%' + ${otherRef.build()}`));
+
+  public endsWith = (otherRef: Ref) =>
+    this.compare("LIKE", Ref._raw(`${otherRef.build()} + '%'`));
+
+  public contains = (otherRef: Ref) =>
+    this.compare("LIKE", Ref._raw(`'%' + ${otherRef.build()} + '%'`));
 
   // public static UPPER = (ref: Ref) => new Ref(`UPPER(${ref.build()})`);
   // public static LOWER = (ref: Ref) => new Ref(`LOWER(${ref.build()})`);

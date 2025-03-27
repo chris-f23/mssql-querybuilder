@@ -1,49 +1,34 @@
 import { ColumnSelector } from "./ColumnSelector";
 import { Comparison } from "./Comparison";
 import { Logical } from "./Logical";
-import { Ref } from "./Ref";
+import { IRef } from "./Ref";
+import { TableSelector } from "./TableSelector";
 import { ITableDefinitionMap } from "./types";
 
 export class QueryBuilderError extends Error {}
 
 export class QueryBuilder<TableDefinitionMap extends ITableDefinitionMap> {
-  private parts: {
-    select: null | Ref[];
-    from: TableDefinitionMap[keyof TableDefinitionMap] | null;
-    join: Array<{
-      table: TableDefinitionMap[keyof TableDefinitionMap];
-      condition: Logical | Comparison;
-    }> | null;
-    where: Logical | Comparison | null;
-  };
-
-  public columnSelector: ColumnSelector<
+  private columnSelector: ColumnSelector<
     QueryBuilder<TableDefinitionMap>["tableDefinitions"]
   >;
 
+  private tableSelector: TableSelector<
+    QueryBuilder<TableDefinitionMap>["tableDefinitions"]
+  >;
+  private whereCondition: Logical | Comparison;
+
   public constructor(private tableDefinitions: TableDefinitionMap = undefined) {
     this.columnSelector = new ColumnSelector(this.tableDefinitions);
-
-    this.parts = {
-      select: null,
-      from: null,
-      join: [],
-      where: null,
-    };
   }
 
-  public select(fn: (tableDefinitions: TableDefinitionMap) => Ref[]) {
+  public select(fn: (tableDefinitions: TableDefinitionMap) => IRef[]) {
     this.columnSelector.select(fn);
     return this;
   }
 
   public from(tableDefinitionName: keyof typeof this.tableDefinitions) {
-    if (this.parts.from !== null) {
-      throw new QueryBuilderError("'SELECT' already set");
-    }
-
-    const table = this.tableDefinitions[tableDefinitionName];
-    this.parts.from = table;
+    this.tableSelector = new TableSelector(this.tableDefinitions);
+    this.tableSelector.from(tableDefinitionName);
     return this;
   }
 
@@ -53,67 +38,60 @@ export class QueryBuilder<TableDefinitionMap extends ITableDefinitionMap> {
       tableDefinitions: TableDefinitionMap
     ) => Logical | Comparison
   ) {
-    const table = this.tableDefinitions[tableAlias];
-
-    const conditionBuilderResult = conditionBuilder(this.tableDefinitions);
-
-    this.parts.join.push({ table: table, condition: conditionBuilderResult });
+    this.tableSelector.join("JOIN", tableAlias, conditionBuilder);
     return this;
   }
 
-  // public where(field: string, operator: string, value: string) {
-  //   if (this.query.where !== null) {
-  //     throw new QueryBuilderError("'WHERE' already set");
-  //   }
+  public leftJoin(
+    tableAlias: keyof typeof this.tableDefinitions,
+    conditionBuilder: (
+      tableDefinitions: TableDefinitionMap
+    ) => Logical | Comparison
+  ) {
+    this.tableSelector.join("LEFT JOIN", tableAlias, conditionBuilder);
+    return this;
+  }
 
-  //   this.query.where = `WHERE ${field} ${operator} ${value}`;
+  public rightJoin(
+    tableAlias: keyof typeof this.tableDefinitions,
+    conditionBuilder: (
+      tableDefinitions: TableDefinitionMap
+    ) => Logical | Comparison
+  ) {
+    this.tableSelector.join("RIGHT JOIN", tableAlias, conditionBuilder);
+    return this;
+  }
+
+  public where(
+    conditionBuilder: (
+      tableDefinitions: TableDefinitionMap
+    ) => Logical | Comparison
+  ) {
+    const conditionBuilderResult = conditionBuilder(this.tableDefinitions);
+    this.whereCondition = conditionBuilderResult;
+    return this;
+  }
+
+  // public where(
+  //   conditionBuilder: (
+  //     tableDefinitions: TableDefinitionMap
+  //   ) => Logical | Comparison
+  // ) {
+  //   const conditionBuilderResult = conditionBuilder(this.tableDefinitions);
+  //   this.whereCondition = conditionBuilderResult;
   //   return this;
   // }
 
-  public buildParts(separator: string) {
-    const columnsSelected = this.columnSelector.build(); //this.parts.select.map((r) => r.build().trim());
-
-    let fromTable: string;
-    if (this.parts.from) {
-      fromTable = `FROM ${this.parts.from.fullName()}`.trim();
+  public build() {
+    let finalQuery = "";
+    finalQuery += this.columnSelector.build();
+    if (this.tableSelector) {
+      finalQuery += " " + this.tableSelector.build();
+    }
+    if (this.whereCondition) {
+      finalQuery += " WHERE " + this.whereCondition.build();
     }
 
-    let joinTables: string[];
-    if (this.parts.join) {
-      joinTables = this.parts.join.map(({ table, condition }) => {
-        return [
-          `JOIN ${table.fullName().trim()}`,
-          `ON ${condition.build().trim()}`,
-        ].join(separator);
-      });
-    }
-
-    let whereCondition: string;
-    if (this.parts.where) {
-      whereCondition = this.parts.where.build().trim();
-    }
-
-    return {
-      columnsSelected,
-      fromTable,
-      joinTables,
-      whereCondition,
-    };
-  }
-
-  public build(multiline: boolean = false) {
-    const separator = multiline ? "\n" : " ";
-    const { columnsSelected, fromTable, joinTables, whereCondition } =
-      this.buildParts(separator);
-
-    return [
-      `SELECT`,
-      columnsSelected.join(separator),
-      fromTable,
-      joinTables,
-      whereCondition,
-    ]
-      .join(separator)
-      .trim();
+    return finalQuery;
   }
 }

@@ -1,49 +1,31 @@
-import { Fn } from "./Fn";
-import { QueryBuilderError, QueryBuilder } from "./QueryBuilder";
+import { QueryBuilder } from "./QueryBuilder";
 import { Ref } from "./Ref";
 import { TableDefinition } from "./TableDefinition";
+import fs from "fs";
+import path from "path";
+
+const personTable = new TableDefinition<{
+  name: string;
+  last_name: string;
+  status_id: string;
+}>({
+  database: "MainDB",
+  table: "Person",
+  alias: "p",
+});
+
+const personStatusTable = new TableDefinition<{
+  id: string;
+  text: string;
+  is_deleted: boolean;
+}>({
+  database: "MainDB",
+  table: "PersonStatus",
+  alias: "ps",
+});
 
 describe("QueryBuilder", () => {
-  it(`Should build "SELECT 1"`, () => {
-    const query = new QueryBuilder()
-      .select(() => {
-        return [Ref.NUMBER(1)];
-      })
-      .build();
-
-    expect(query).toEqual("SELECT 1");
-  });
-
-  it(`Should build "SELECT 'Hello World'"`, () => {
-    const query = new QueryBuilder()
-      .select(() => {
-        return [Ref.STRING("Hello World")];
-      })
-      .build();
-
-    expect(query).toEqual("SELECT 'Hello World'");
-  });
-
-  it(`Should build "SELECT 'Hello World' AS [message]"`, () => {
-    const query = new QueryBuilder()
-      .select(() => {
-        return [Ref.STRING("Hello World").as("message")];
-      })
-      .build();
-
-    expect(query).toEqual("SELECT 'Hello World' AS [message]");
-  });
-
   it(`Should build "SELECT [p].[name] + ' ' + [p].[last_name] AS [full_name]"`, () => {
-    const personTable = new TableDefinition<{
-      name: string;
-      last_name: string;
-    }>({
-      database: "MainDB",
-      table: "Person",
-      alias: "p",
-    });
-
     const query = new QueryBuilder({
       person: personTable,
     })
@@ -63,26 +45,12 @@ describe("QueryBuilder", () => {
     );
   });
 
-  it("Should build a valid complex query", () => {
-    const personTable = new TableDefinition<{
-      name: string;
-      last_name: string;
-      status_id: string;
-    }>({
-      database: "MainDB",
-      table: "Person",
-      alias: "p",
-    });
-
-    const personStatusTable = new TableDefinition<{
-      id: string;
-      text: string;
-      is_deleted: boolean;
-    }>({
-      database: "MainDB",
-      table: "PersonStatus",
-      alias: "ps",
-    });
+  it("Should build examples/query-1.sql", () => {
+    const query1 = fs
+      .readFileSync(path.join("src", "lib", "examples", "query-1.sql"), {
+        encoding: "utf-8",
+      })
+      .replace(/\s{2,}/gm, " ");
 
     const query = new QueryBuilder({
       person: personTable,
@@ -92,7 +60,7 @@ describe("QueryBuilder", () => {
         return [
           person
             .get("name")
-            .append(Ref.STRING(" "))
+            .append(" ")
             .append(person.get("last_name"))
             .toUpper()
             .as("full_name"),
@@ -106,63 +74,11 @@ describe("QueryBuilder", () => {
           .isEqualTo(status.get("id"))
           .and(status.get("is_deleted").isFalse())
           .or(status.get("text").isNotNull());
+      })
+      .where(({ person }) => {
+        return person.get("last_name").contains(person.get("name"));
       });
 
-    const { columnsSelected, fromTable, joinTables, whereCondition } =
-      query.buildParts("\n");
-
-    expect(columnsSelected).toStrictEqual([
-      `UPPER([p].[name] + ' ' + [p].[last_name]) AS [full_name]`,
-      `[ps].[text] AS [status]`,
-    ]);
-
-    expect(fromTable).toStrictEqual("FROM [MainDB].[dbo].[Person] AS [p]");
-    expect(joinTables).toStrictEqual([
-      `JOIN [MainDB].[dbo].[PersonStatus] AS [ps]\nON [p].[status_id] = [ps].[id] AND [ps].[is_deleted] = BIT(0) OR [ps].[text] IS NOT NULL`,
-    ]);
+    expect(query.build()).toStrictEqual(query1);
   });
-  // it("Should build a query correctly", () => {
-  //   const query = new QueryBuilder()
-  //     .from({
-  //       database: "MainDB",
-  //       table: "Person",
-  //       as: "p",
-  //     })
-  //     .select(["name", "email", "phone"])
-  //     .where("p.id", "=", "1")
-  //     .build();
-
-  //   expect(query).toEqual(
-  //     [
-  //       "SELECT [name], [email], [phone] FROM [MainDB].[dbo].[Person] AS p WHERE p.id = 1",
-  //     ].join("\n")
-  //   );
-  // });
-
-  // it("Should throw an error if a clause is already set", () => {
-  //   const builder = new QueryBuilder()
-  //     .select(["name", "email", "phone"])
-  //     .from({
-  //       database: "MainDB",
-  //       table: "Person",
-  //       as: "p",
-  //     })
-  //     .where("p.id", "=", "1");
-
-  //   expect(() => builder.select(["name", "email", "phone"])).toThrow(
-  //     ClauseAlreadySetError
-  //   );
-
-  //   expect(() =>
-  //     builder.from({
-  //       database: "MainDB",
-  //       table: "Person",
-  //       as: "p",
-  //     })
-  //   ).toThrow(ClauseAlreadySetError);
-
-  //   expect(() => builder.where("pac.id", "=", "2")).toThrow(
-  //     ClauseAlreadySetError
-  //   );
-  // });
 });

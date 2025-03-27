@@ -1,28 +1,48 @@
 import { ColumnSelector } from "./ColumnSelector";
 import { Ref } from "./Ref";
 
-describe("QueryBuilder", () => {
-  it(`Should select "1"`, () => {
+describe("Column Selector", () => {
+  it(`Should build "SELECT 1"`, () => {
     const columnsSelected = new ColumnSelector()
       .select(() => {
         return [Ref.NUMBER(1)];
       })
       .build();
 
-    expect(columnsSelected).toStrictEqual(["1"]);
+    expect(columnsSelected).toStrictEqual(`SELECT 1`);
   });
 
-  it(`Should select "1 AS [number]"`, () => {
+  it(`Should build "SELECT 1 AS [number]"`, () => {
     const columnsSelected = new ColumnSelector()
       .select(() => {
         return [Ref.NUMBER(1).as("number")];
       })
       .build();
 
-    expect(columnsSelected).toStrictEqual(["1 AS [number]"]);
+    expect(columnsSelected).toStrictEqual(`SELECT 1 AS [number]`);
   });
 
-  it(`Should select "SELECT UPPER('hello world') AS [upper_message]" and "'me' AS [author]"`, () => {
+  it(`Should build "SELECT 'Hello World'"`, () => {
+    const columnsSelected = new ColumnSelector()
+      .select(() => {
+        return [Ref.STRING("Hello World")];
+      })
+      .build();
+
+    expect(columnsSelected).toEqual("SELECT 'Hello World'");
+  });
+
+  it(`Should build "SELECT 'Hello World' AS [message]"`, () => {
+    const columnsSelected = new ColumnSelector()
+      .select(() => {
+        return [Ref.STRING("Hello World").as("message")];
+      })
+      .build();
+
+    expect(columnsSelected).toEqual("SELECT 'Hello World' AS [message]");
+  });
+
+  it(`Should build "SELECT UPPER('hello world') AS [upper_message], 'me' AS [author]"`, () => {
     const columnsSelected = new ColumnSelector()
       .select(() => {
         return [
@@ -32,9 +52,8 @@ describe("QueryBuilder", () => {
       })
       .build();
 
-    expect(columnsSelected).toStrictEqual([
-      `UPPER('hello world') AS [upper_message]`,
-      `'me' AS [author]`,
-    ]);
+    expect(columnsSelected).toStrictEqual(
+      `SELECT UPPER('hello world') AS [upper_message], 'me' AS [author]`
+    );
   });
 });
