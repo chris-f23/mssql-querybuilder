@@ -1,7 +1,7 @@
 import { ColumnSelector } from "./ColumnSelector";
 import { Comparison } from "./Comparison";
 import { Logical } from "./Logical";
-import { IRef } from "./Ref";
+import { IRef, Ref } from "./Ref";
 import { TableSelector } from "./TableSelector";
 import { ITableDefinitionMap } from "./types";
 
@@ -16,6 +16,7 @@ export class QueryBuilder<TableDefinitionMap extends ITableDefinitionMap> {
     QueryBuilder<TableDefinitionMap>["tableDefinitions"]
   >;
   private whereCondition: Logical | Comparison;
+  private orderByRefs: IRef[];
 
   public constructor(private tableDefinitions: TableDefinitionMap = undefined) {
     this.columnSelector = new ColumnSelector(this.tableDefinitions);
@@ -72,6 +73,12 @@ export class QueryBuilder<TableDefinitionMap extends ITableDefinitionMap> {
     return this;
   }
 
+  public orderBy(orderByFn: (tableDefinitions: TableDefinitionMap) => IRef[]) {
+    const orderByFnResult = orderByFn(this.tableDefinitions);
+    this.orderByRefs = orderByFnResult;
+    return this;
+  }
+
   // public where(
   //   conditionBuilder: (
   //     tableDefinitions: TableDefinitionMap
@@ -91,6 +98,13 @@ export class QueryBuilder<TableDefinitionMap extends ITableDefinitionMap> {
     if (this.whereCondition) {
       finalQuery += " WHERE " + this.whereCondition.build();
     }
+
+    if (this.orderByRefs) {
+      finalQuery +=
+        " ORDER BY " + this.orderByRefs.map((r) => r.build()).join(", ");
+    }
+
+    finalQuery += ";";
 
     return finalQuery;
   }

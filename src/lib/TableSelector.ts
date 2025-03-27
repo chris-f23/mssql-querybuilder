@@ -49,7 +49,7 @@ export class TableSelector<TableDefinitionMap extends ITableDefinitionMap> {
       `FROM ${this.fromTable.fullName()}`,
       this.joinTables.map(({ joinType, table, condition }) => {
         return `${joinType} ${table.fullName()} ON ${condition.build()}`;
-      }),
+      }).join(" "),
     ].join(" ");
   }
 }
