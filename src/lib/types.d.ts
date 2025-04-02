@@ -18,4 +18,5 @@ export type Comparator =
   | "IN"
   | "NOT IN"
   | "LIKE"
-  | "NOT LIKE";
+  | "NOT LIKE"
+  | "BETWEEN";

@@ -1,4 +1,4 @@
-import { IRef } from "./Ref";
+import { IRef, Ref } from "./Ref";
 import { ITableDefinitionMap } from "./types";
 
 export class ColumnSelectorError extends Error {}

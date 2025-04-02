@@ -129,4 +129,99 @@ describe("QueryBuilder", () => {
 
     expect(query.build()).toStrictEqual(query2);
   });
+  
+  it("Should build examples/query-3.sql", () => {
+    const query3 = fs
+      .readFileSync(path.join("src", "lib", "examples", "query-3.sql"), {
+        encoding: "utf-8",
+      })
+      .replace(/\s{2,}/gm, " ");
+
+    const tableDefinitions = {
+      customers: new TableDefinition<{
+        CustomerId: string;
+        CustomerName: string;
+        Email: string;
+      }>({
+        database: "SalesDatabase",
+        schema: "SalesSchema",
+        table: "Customers",
+        alias: "cust",
+      }),
+      orders: new TableDefinition<{
+        OrderId: string;
+        OrderDate: string;
+        CustomerId: string;
+      }>({
+        database: "SalesDatabase",
+        schema: "SalesSchema",
+        table: "Orders",
+        alias: "ord",
+      }),
+      orderDetails: new TableDefinition<{
+        OrderId: string;
+        ProductId: string;
+        Quantity: number;
+      }>({
+        database: "SalesDatabase",
+        schema: "SalesSchema",
+        table: "OrderDetails",
+        alias: "ord_det",
+      }),
+      products: new TableDefinition<{
+        ProductName: string;
+        Price: number;
+        ProductId: string;
+        Category: string;
+      }>({
+        database: "SalesDatabase",
+        schema: "SalesSchema",
+        table: "Products",
+        alias: "prod",
+      }),
+    };
+
+    const query = new QueryBuilder(tableDefinitions)
+      .select(({ customers, orders, orderDetails, products }) => {
+        return [
+          customers.get("CustomerName").as("CustomerFullName"),
+          customers.get("Email").as("CustomerEmail"),
+          orders.get("OrderId").as("OrderId"),
+          orders.get("OrderDate").as("OrderDate"),
+          products.get("ProductName").as("ProductName"),
+          products.get("Price").as("ProductPrice"),
+          orderDetails.get("Quantity").as("Quantity"),
+          products
+            .get("Price")
+            .multipliedBy(orderDetails.get("Quantity"))
+            .as("TotalRevenuePerProduct"),
+          Ref.sumOverPartition(
+            products.get("Price").multipliedBy(orderDetails.get("Quantity")),
+            customers.get("CustomerId")
+          ).as("TotalRevenuePerCustomer"),
+        ];
+      })
+      .from("customers")
+      .join("orders", ({ customers, orders }) =>
+        customers.get("CustomerId").isEqualTo(orders.get("CustomerId"))
+      )
+      .join("orderDetails", ({ orders, orderDetails }) =>
+        orders.get("OrderId").isEqualTo(orderDetails.get("OrderId"))
+      )
+      .join("products", ({ products, orderDetails }) =>
+        orderDetails.get("ProductId").isEqualTo(products.get("ProductId"))
+      )
+      .where(({ orders, products }) =>
+        orders
+          .get("OrderDate")
+          .isBetween("2025-01-01", "2025-12-31")
+          .and(products.get("Category").isEqualTo("Electronics"))
+      )
+      .orderBy(({ customers, orders }) => [
+        customers.get("CustomerName").ascending(),
+        orders.get("OrderDate").descending(),
+      ]);
+
+    expect(query.build()).toStrictEqual(query3);
+  });
 });

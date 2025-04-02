@@ -10,13 +10,13 @@ SELECT
     SUM([prod].[Price] * [ord_det].[Quantity]) OVER (PARTITION BY [cust].[CustomerId]) AS [TotalRevenuePerCustomer]
 FROM 
     [SalesDatabase].[SalesSchema].[Customers] AS [cust]
-INNER JOIN 
+JOIN 
     [SalesDatabase].[SalesSchema].[Orders] AS [ord] 
     ON [cust].[CustomerId] = [ord].[CustomerId]
-INNER JOIN 
+JOIN 
     [SalesDatabase].[SalesSchema].[OrderDetails] AS [ord_det] 
     ON [ord].[OrderId] = [ord_det].[OrderId]
-INNER JOIN 
+JOIN 
     [SalesDatabase].[SalesSchema].[Products] AS [prod] 
     ON [ord_det].[ProductId] = [prod].[ProductId]
 WHERE 

@@ -5,7 +5,15 @@ export interface IRef {
   build(): string;
 }
 
-class AliasRef implements IRef {
+export class OrderedRef implements IRef {
+  public constructor(private original: string) {}
+
+  public build(): string {
+    return this.original;
+  }
+}
+
+export class AliasRef implements IRef {
   public constructor(private original: string) {}
 
   public build(): string {
@@ -16,7 +24,14 @@ class AliasRef implements IRef {
 export class Ref implements IRef {
   private constructor(private original: string) {}
 
-  public build(): string {
+  public build(removeWrappingParenthesis: boolean = true): string {
+    if (
+      removeWrappingParenthesis &&
+      this.original.startsWith("(") &&
+      this.original.endsWith(")")
+    ) {
+      return this.original.slice(1, this.original.length - 1);
+    }
     return this.original;
   }
 
@@ -82,6 +97,46 @@ export class Ref implements IRef {
   public toUpper = () => new Ref(`UPPER(${this.original})`);
   public toLower = () => new Ref(`LOWER(${this.original})`);
 
+  public multipliedBy = (refOrValue: Ref | number) =>
+    new Ref(
+      `(${this.original} * ${
+        refOrValue instanceof Ref ? refOrValue.build() : refOrValue
+      })`
+    );
+
+  public dividedBy = (refOrValue: Ref | number) =>
+    new Ref(
+      `(${this.original} / ${
+        refOrValue instanceof Ref ? refOrValue.build() : refOrValue
+      })`
+    );
+
+  public isBetween = (
+    refOrValue: Ref | number | string,
+    andRefOrValue: Ref | number | string
+  ): Comparison => {
+    let leftRef = refOrValue;
+
+    if (typeof leftRef === "string") {
+      leftRef = Ref.STRING(leftRef);
+    } else if (typeof leftRef === "number") {
+      leftRef = Ref.NUMBER(leftRef);
+    }
+
+    let rightRef = andRefOrValue;
+    if (typeof rightRef === "string") {
+      rightRef = Ref.STRING(rightRef);
+    } else if (typeof rightRef === "number") {
+      rightRef = Ref.NUMBER(rightRef);
+    }
+
+    return new Comparison(
+      this,
+      "BETWEEN",
+      new Ref(`${leftRef.build()} AND ${rightRef.build()}`)
+    );
+  };
+
   // public isLike = (otherRef: Ref) => this.compare("LIKE", otherRef);
 
   public startsWith = (otherRefOrString: Ref | string) => {
@@ -117,9 +172,9 @@ export class Ref implements IRef {
   //   return new Ref(values.map((v) => v.build()).join(" + "));
   // }
 
-  public ascending = () => new AliasRef(`${this.original} ASC`);
+  public ascending = () => new OrderedRef(`${this.original} ASC`);
 
-  public descending = () => new AliasRef(`${this.original} ASC`);
+  public descending = () => new OrderedRef(`${this.original} DESC`);
 
   public static NUMBER = (value: number) => new Ref(`${value}`);
 
@@ -131,4 +186,8 @@ export class Ref implements IRef {
   public static NULL = () => new Ref("NULL");
   public static FALSE = () => new Ref(`BIT(0)`);
   public static TRUE = () => new Ref(`BIT(1)`);
+
+  public static sumOverPartition(ref: Ref, by: Ref): Ref {
+    return new Ref(`SUM(${ref.build()}) OVER (PARTITION BY ${by.build()})`);
+  }
 }

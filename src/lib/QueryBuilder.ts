@@ -1,7 +1,7 @@
 import { ColumnSelector } from "./ColumnSelector";
 import { Comparison } from "./Comparison";
 import { Logical } from "./Logical";
-import { IRef, Ref } from "./Ref";
+import { AliasRef, IRef, OrderedRef } from "./Ref";
 import { TableSelector } from "./TableSelector";
 import { ITableDefinitionMap } from "./types";
 
@@ -73,21 +73,13 @@ export class QueryBuilder<TableDefinitionMap extends ITableDefinitionMap> {
     return this;
   }
 
-  public orderBy(orderByFn: (tableDefinitions: TableDefinitionMap) => IRef[]) {
+  public orderBy(
+    orderByFn: (tableDefinitions: TableDefinitionMap) => OrderedRef[]
+  ) {
     const orderByFnResult = orderByFn(this.tableDefinitions);
     this.orderByRefs = orderByFnResult;
     return this;
   }
-
-  // public where(
-  //   conditionBuilder: (
-  //     tableDefinitions: TableDefinitionMap
-  //   ) => Logical | Comparison
-  // ) {
-  //   const conditionBuilderResult = conditionBuilder(this.tableDefinitions);
-  //   this.whereCondition = conditionBuilderResult;
-  //   return this;
-  // }
 
   public build() {
     let finalQuery = "";
